@@ -58,15 +58,15 @@ while (<STDIN>) {
 	$time{"$x2 $y2 $x1 $y1"} += $sec * $idist / $dist;
 	$count{"$x2 $y2 $x1 $y1"}++;
 
-	#$avg += (2 * $sec * $idist / $dist / $idist);
-	$avg += (2 * $sec * $idist / $dist);
-	$sum += 2;
+	##$avg += (2 * $sec * $idist / $dist / $idist);
+	#$avg += (2 * $sec * $idist / $dist);
+	#$sum += 2;
 }
 
-#for $loc (keys(%time)) {
-#	$avg += $time{$loc};
-#	$sum += $count{$loc};
-#}
+for $loc (keys(%time)) {
+	$avg += $time{$loc};
+	$sum += $count{$loc};
+}
 $avg /= $sum;
 
 print STDERR "avg is $avg\n";
@@ -88,10 +88,10 @@ for $loc (keys(%time)) {
 
 for ($y = 0; $y <= $size; $y++) {
 	for ($x = 0; $x <= $size; $x++) {
-		push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x - 1, $y, 1, 1);
-		push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x + 1, $y, 1, 1);
-		push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x, $y - 1, 1, 1);
-		push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x, $y + 1, 1, 1);
+		#push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x - 1, $y, 1, 1);
+		#push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x + 1, $y, 1, 1);
+		#push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x, $y - 1, 1, 1);
+		#push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x, $y + 1, 1, 1);
 
 		$x{"$x $y"} = $x;
 		$y{"$x $y"} = $y;
