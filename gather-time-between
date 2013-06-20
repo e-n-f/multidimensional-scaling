@@ -106,7 +106,7 @@ for ($y = 0; $y <= $size; $y++) {
 }
 
 #while (1) 
-for ($pass = 0; $pass < 500; $pass++)
+for ($pass = 0; $pass < 1000; $pass++)
 {
 	print STDERR "pass $pass\n";
 
@@ -154,7 +154,7 @@ if (0) {
 			next;
 		}
 
-		if (1) {
+		if (0) {
 		if (abs($pullx{$loc}) + abs($pully{$loc}) > 0) {
 			$angle = atan2($pully{$loc}, $pullx{$loc});
 			$x{$loc} += .1 * cos($angle);
@@ -201,7 +201,7 @@ if (0) {
 			}
 		}
 
-		if (0) {
+		if (1) {
 			if ($pullx{$loc} > 0) {
 				$x{$loc} = (9 * $x{$loc} +
 					    $ox{sprintf("%d %d", $x + 1, $y)}) / 10;
