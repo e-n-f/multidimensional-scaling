@@ -85,7 +85,7 @@ for ($y = 0; $y <= $size; $y++) {
 }
 
 #while (1) 
-for ($pass = 0; $pass < 100; $pass++)
+for ($pass = 0; $pass < 30; $pass++)
 {
 	print STDERR "pass $pass\n";
 
@@ -96,9 +96,22 @@ for ($pass = 0; $pass < 100; $pass++)
 	for $force (@forces) {
 		($x1, $y1, $x2, $y2, $wantdist, $count) = split(/ /, $force);
 
-		$pullx{"$x1 $y1"} += ($x{"$x2 $y2"} - $x{"$x1 $y1"}) / $wantdist; # * $count;
-		$pully{"$x1 $y1"} += ($y{"$x2 $y2"} - $y{"$x1 $y1"}) / $wantdist; # * $count;
-		$pullcount{"$x1 $y1"}++;
+		$xdist = ($x{"$x2 $y2"} - $x{"$x1 $y1"});
+		$ydist = ($y{"$x2 $y2"} - $y{"$x1 $y1"});
+		$dist = ($xdist * $xdist + $ydist * $ydist);
+
+		if ($dist != 0) {
+			$angle = atan2($ydist, $xdist);
+
+			#$pullx{"$x1 $y1"} += $xdist * (-$wantdist / $dist); # * $count;
+			#$pully{"$x1 $y1"} += $ydist * (-$wantdist / $dist); # * $count;
+
+			$pullx{"$x1 $y1"} += (-$wantdist / $dist) * cos($angle); # * $count;
+			$pully{"$x1 $y1"} += (-$wantdist / $dist) * sin($angle); # * $count;
+
+			$pullcount{"$x1 $y1"}++;
+			$pullcount{"$x1 $y1"}++;
+		}
 	}
 
 	%ox = %x;
