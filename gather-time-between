@@ -30,7 +30,9 @@ while (<STDIN>) {
 	$y2 = $size * (($lat2 - $maxlat) / ($minlat - $maxlat));
 	$x2 = $size * (($lon2 - $minlon) / ($maxlon - $minlon));
 
-	$xd = $x2 - $y1;
+	#print "$lat1,$lon1 to $lat2,$lon2  $x1,$y1 to $x2,$y2 ";
+
+	$xd = $x2 - $x1;
 	$yd = $y2 - $y1;
 	$dist = sqrt($xd * $xd + $yd * $yd);
 
@@ -42,6 +44,8 @@ while (<STDIN>) {
 	$ixd = $x2 - $x1;
 	$iyd = $y2 - $y1;
 	$idist = sqrt($ixd * $ixd + $iyd * $iyd);
+
+	#print "$x1,$y1 to $x2,$y2   $dist and $idist\n";
 
 	next if ($x1 == $x2 && $y1 == $y2);
 	if ($idist == 0) {
@@ -58,15 +62,15 @@ while (<STDIN>) {
 	$time{"$x2 $y2 $x1 $y1"} += $sec * $idist / $dist;
 	$count{"$x2 $y2 $x1 $y1"}++;
 
-	##$avg += (2 * $sec * $idist / $dist / $idist);
+	$avg += (2 * $sec * $idist / $dist / $idist);
 	#$avg += (2 * $sec * $idist / $dist);
-	#$sum += 2;
+	$sum += 2;
 }
 
-for $loc (keys(%time)) {
-	$avg += $time{$loc};
-	$sum += $count{$loc};
-}
+#for $loc (keys(%time)) {
+#	$avg += $time{$loc};
+#	$sum += $count{$loc};
+#}
 $avg /= $sum;
 
 print STDERR "avg is $avg\n";
@@ -88,10 +92,10 @@ for $loc (keys(%time)) {
 
 for ($y = 0; $y <= $size; $y++) {
 	for ($x = 0; $x <= $size; $x++) {
-		#push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x - 1, $y, 1, 1);
-		#push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x + 1, $y, 1, 1);
-		#push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x, $y - 1, 1, 1);
-		#push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x, $y + 1, 1, 1);
+		push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x - 1, $y, 1, 1);
+		push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x + 1, $y, 1, 1);
+		push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x, $y - 1, 1, 1);
+		push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x, $y + 1, 1, 1);
 
 		$x{"$x $y"} = $x;
 		$y{"$x $y"} = $y;
@@ -150,6 +154,7 @@ if (0) {
 			next;
 		}
 
+		if (1) {
 		if (abs($pullx{$loc}) + abs($pully{$loc}) > 0) {
 			$angle = atan2($pully{$loc}, $pullx{$loc});
 			$x{$loc} += .1 * cos($angle);
@@ -172,6 +177,12 @@ if (0) {
 			if ($y{$loc} > $y{$downloc}) {
 				$y{$loc} = $y{$downloc};
 			}
+		}
+		}
+
+		if (0) {
+			$x{$loc} += $pullx{$loc};
+			$y{$loc} += $pully{$loc};
 		}
 
 		if (0 && $pullcount{$loc} >= 5) {
