@@ -7,7 +7,7 @@ $maxlon = -122.33578269994847;
 
 $size = 200;
 
-while (<>) {
+while (<STDIN>) {
 	($when, $a, $to, $b, $date, $time, $sec, $dist, $speed) = split(/ /);
 
 	next if $speed > 85;
@@ -85,7 +85,7 @@ for ($y = 0; $y <= $size; $y++) {
 }
 
 #while (1) 
-for ($pass = 0; $pass < 30; $pass++)
+for ($pass = 0; $pass < 500; $pass++)
 {
 	print STDERR "pass $pass\n";
 
@@ -96,21 +96,23 @@ for ($pass = 0; $pass < 30; $pass++)
 	for $force (@forces) {
 		($x1, $y1, $x2, $y2, $wantdist, $count) = split(/ /, $force);
 
-		$xdist = ($x{"$x2 $y2"} - $x{"$x1 $y1"});
-		$ydist = ($y{"$x2 $y2"} - $y{"$x1 $y1"});
-		$dist = ($xdist * $xdist + $ydist * $ydist);
+		$distx = $x{"$x2 $y2"} - $x{"$x1 $y1"};
+		$disty = $y{"$x2 $y2"} - $y{"$x1 $y1"};
+		$dist = sqrt($distx * $distx + $disty * $disty);
 
-		if ($dist != 0) {
-			$angle = atan2($ydist, $xdist);
+		if ($dist < $wantdist) {
+			$angle = atan2($disty, $distx);
 
-			#$pullx{"$x1 $y1"} += $xdist * (-$wantdist / $dist); # * $count;
-			#$pully{"$x1 $y1"} += $ydist * (-$wantdist / $dist); # * $count;
+			$pullx{"$x2 $y2"} += cos($angle) * $count;
+			$pully{"$x2 $y2"} += sin($angle) * $count;
+			$pullcount{"$x2 $y2"}++;
+		}
+		if ($dist > $wantdist) {
+			$angle = atan2($disty, $distx);
 
-			$pullx{"$x1 $y1"} += (-$wantdist / $dist) * cos($angle); # * $count;
-			$pully{"$x1 $y1"} += (-$wantdist / $dist) * sin($angle); # * $count;
-
-			$pullcount{"$x1 $y1"}++;
-			$pullcount{"$x1 $y1"}++;
+			$pullx{"$x2 $y2"} -= cos($angle) * $count;
+			$pully{"$x2 $y2"} -= sin($angle) * $count;
+			$pullcount{"$x2 $y2"}++;
 		}
 	}
 
@@ -172,30 +174,40 @@ for ($pass = 0; $pass < 30; $pass++)
 	}
 
 	if (0) {
-	print "0 setlinewidth\n";
+		print "0 setlinewidth\n";
 
+		for ($y = 0; $y <= $size; $y++) {
+			for ($x = 0; $x <= $size; $x++) {
+				$loc = "$x $y";
+
+				printf("%.3f %.3f %s ", $x{$loc} * 612 / $size, 612 - ($y{$loc} * 612 / $size), $x == 0 ? "moveto" : "lineto");
+			}
+
+			print "stroke\n";
+		}
+
+		for ($x = 0; $x <= $size; $x++) {
+			for ($y = 0; $y <= $size; $y++) {
+				$loc = "$x $y";
+
+				printf("%.3f %.3f %s ", $x{$loc} * 612 / $size, 612 - ($y{$loc} * 612 / $size), $y == 0 ? "moveto" : "lineto");
+			}
+
+			print "stroke\n";
+		}
+
+		print "showpage\n";
+	}
+
+	open(OUT, ">$ARGV[0]-$pass.out");
 	for ($y = 0; $y <= $size; $y++) {
 		for ($x = 0; $x <= $size; $x++) {
 			$loc = "$x $y";
 
-			printf("%.3f %.3f %s ", $x{$loc} * 612 / $size, 612 - ($y{$loc} * 612 / $size), $x == 0 ? "moveto" : "lineto");
+			printf OUT ("%.3f %.3f\n", $x{$loc}, $y{$loc});
 		}
-
-		print "stroke\n";
 	}
-
-	for ($x = 0; $x <= $size; $x++) {
-		for ($y = 0; $y <= $size; $y++) {
-			$loc = "$x $y";
-
-			printf("%.3f %.3f %s ", $x{$loc} * 612 / $size, 612 - ($y{$loc} * 612 / $size), $y == 0 ? "moveto" : "lineto");
-		}
-
-		print "stroke\n";
-	}
-
-	print "showpage\n";
-	}
+	close(OUT);
 }
 
 for ($y = 0; $y <= $size; $y++) {
