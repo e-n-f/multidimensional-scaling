@@ -11,7 +11,7 @@ while (<STDIN>) {
 	($when, $a, $to, $b, $date, $time, $sec, $dist, $speed) = split(/ /);
 
 	next if $speed > 85;
-	next if $sec > 245 || $sec <= 0;
+	next if $sec > 60 * 30 || $sec <= 0;
 	next if $dist/$sec < 1.5;
 
 	if ($seen{$date} eq "") {
