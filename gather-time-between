@@ -12,7 +12,7 @@ while (<STDIN>) {
 
 	next if $speed > 85;
 	next if $sec > 245 || $sec <= 0;
-	#next if $dist/$sec < 2.5;
+	next if $dist/$sec < 1.5;
 
 	if ($seen{$date} eq "") {
 		print STDERR "$date\n";
@@ -39,20 +39,37 @@ while (<STDIN>) {
 	$x2 = int($x2);
 	$y2 = int($y2);
 
-	next if ($x1 == $x2 && $y1 == $y2);
+	$ixd = $x2 - $x1;
+	$iyd = $y2 - $y1;
+	$idist = sqrt($ixd * $ixd + $iyd * $iyd);
 
-	$time{"$x1 $y1 $x2 $y2"} += $sec / $dist;
+	next if ($x1 == $x2 && $y1 == $y2);
+	if ($idist == 0) {
+		print STDERR "how is this possible? $x1 $y1 $x2 $y2 $idist\n";
+		next;
+	}
+	#print "$idist $x1 $y1 $x2 $y2\n";
+
+	#printf("%.6f\n", $sec * $idist / $dist);
+
+	$time{"$x1 $y1 $x2 $y2"} += $sec * $idist / $dist;
 	$count{"$x1 $y1 $x2 $y2"}++;
 
-	$time{"$x2 $y2 $x1 $y1"} += $sec / $dist;
+	$time{"$x2 $y2 $x1 $y1"} += $sec * $idist / $dist;
 	$count{"$x2 $y2 $x1 $y1"}++;
+
+	#$avg += (2 * $sec * $idist / $dist / $idist);
+	$avg += (2 * $sec * $idist / $dist);
+	$sum += 2;
 }
 
-for $loc (keys(%time)) {
-	$avg += $time{$loc} / $count{$loc};
-	$sum++;
-}
+#for $loc (keys(%time)) {
+#	$avg += $time{$loc};
+#	$sum += $count{$loc};
+#}
 $avg /= $sum;
+
+print STDERR "avg is $avg\n";
 
 for $loc (keys(%time)) {
 	($x1, $y1, $x2, $y2) = split(/ /, $loc);
@@ -93,27 +110,34 @@ for ($pass = 0; $pass < 500; $pass++)
 	%pully = ();
 	%pullcount = ();
 
-	for $force (@forces) {
+	for $force ((@forces)) {
 		($x1, $y1, $x2, $y2, $wantdist, $count) = split(/ /, $force);
 
 		$distx = $x{"$x2 $y2"} - $x{"$x1 $y1"};
 		$disty = $y{"$x2 $y2"} - $y{"$x1 $y1"};
 		$dist = sqrt($distx * $distx + $disty * $disty);
+		$angle = atan2($disty, $distx);
 
-		if ($dist < $wantdist) {
-			$angle = atan2($disty, $distx);
+		#print "force! $force\n";
 
-			$pullx{"$x2 $y2"} += cos($angle) * $count;
-			$pully{"$x2 $y2"} += sin($angle) * $count;
-			$pullcount{"$x2 $y2"}++;
+		if ($dist == 0) {
+			$dist = .00001;
 		}
-		if ($dist > $wantdist) {
-			$angle = atan2($disty, $distx);
 
-			$pullx{"$x2 $y2"} -= cos($angle) * $count;
-			$pully{"$x2 $y2"} -= sin($angle) * $count;
-			$pullcount{"$x2 $y2"}++;
-		}
+if (0) {
+		print "$x2 $y2 is at " . $x{"$x2 $y2"} . "," . $y{"$x2 $y2"} . "\n";
+		print "pulled toward $x1 $y1 at ". $x{"$x1 $y1"} . "," . $y{"$x1 $y1"} . "\n";
+		print "distance is $dist ($distx $disty) would like to be $wantdist\n";
+		printf("therefore pulling %.6f %.6f\n", -cos($angle) * ($dist - $wantdist), -sin($angle) * ($dist - $wantdist));
+}
+
+		#$pullx{"$x2 $y2"} -= cos($angle) * ($dist - $wantdist) * $count / ($dist * $dist);
+		#$pully{"$x2 $y2"} -= sin($angle) * ($dist - $wantdist) * $count / ($dist * $dist);
+		#$pullcount{"$x2 $y2"} += $count / ($dist * $dist);
+
+		$pullx{"$x2 $y2"} -= cos($angle) * ($dist - $wantdist) * $count;
+		$pully{"$x2 $y2"} -= sin($angle) * ($dist - $wantdist) * $count;
+		$pullcount{"$x2 $y2"} += $count;
 	}
 
 	%ox = %x;
@@ -124,6 +148,30 @@ for ($pass = 0; $pass < 500; $pass++)
 
 		if ($x < 1 || $y < 1 || $x > $size - 1 || $y > $size - 1) {
 			next;
+		}
+
+		if (abs($pullx{$loc}) + abs($pully{$loc}) > 0) {
+			$angle = atan2($pully{$loc}, $pullx{$loc});
+			$x{$loc} += .1 * cos($angle);
+			$y{$loc} += .1 * sin($angle);
+
+			$leftloc = sprintf("%d %d", $x - 1, $y);
+			$rightloc = sprintf("%d %d", $x + 1, $y);
+			$uploc = sprintf("%d %d", $x, $y - 1);
+			$downloc = sprintf("%d %d", $x, $y + 1);
+
+			if ($x{$loc} < $x{$leftloc}) {
+				$x{$loc} = $x{$leftloc};
+			}
+			if ($x{$loc} > $x{$rightloc}) {
+				$x{$loc} = $x{$rightloc};
+			}
+			if ($y{$loc} < $y{$uploc}) {
+				$y{$loc} = $y{$uploc};
+			}
+			if ($y{$loc} > $y{$downloc}) {
+				$y{$loc} = $y{$downloc};
+			}
 		}
 
 		if (0 && $pullcount{$loc} >= 5) {
@@ -142,34 +190,36 @@ for ($pass = 0; $pass < 500; $pass++)
 			}
 		}
 
-		if ($pullx{$loc} > 0) {
-			$x{$loc} = (9 * $x{$loc} +
-				    $ox{sprintf("%d %d", $x + 1, $y)}) / 10;
-			$y{$loc} = (9 * $y{$loc} +
-				    $oy{sprintf("%d %d", $x + 1, $y)}) / 10;
-			#print "to right: pulled $ox{$loc} $oy{$loc} to $x{$loc} $y{$loc}\n";
-		}
-		if ($pullx{$loc} < 0) {
-			$x{$loc} = (9 * $x{$loc} +
-				    $ox{sprintf("%d %d", $x - 1, $y)}) / 10;
-			$y{$loc} = (9 * $y{$loc} +
-				    $oy{sprintf("%d %d", $x - 1, $y)}) / 10;
-			#print "to left: pulled $ox{$loc} $oy{$loc} to $x{$loc} $y{$loc}\n";
-		}
+		if (0) {
+			if ($pullx{$loc} > 0) {
+				$x{$loc} = (9 * $x{$loc} +
+					    $ox{sprintf("%d %d", $x + 1, $y)}) / 10;
+				$y{$loc} = (9 * $y{$loc} +
+					    $oy{sprintf("%d %d", $x + 1, $y)}) / 10;
+				#print "to right: pulled $ox{$loc} $oy{$loc} to $x{$loc} $y{$loc}\n";
+			}
+			if ($pullx{$loc} < 0) {
+				$x{$loc} = (9 * $x{$loc} +
+					    $ox{sprintf("%d %d", $x - 1, $y)}) / 10;
+				$y{$loc} = (9 * $y{$loc} +
+					    $oy{sprintf("%d %d", $x - 1, $y)}) / 10;
+				#print "to left: pulled $ox{$loc} $oy{$loc} to $x{$loc} $y{$loc}\n";
+			}
 
-		if ($pully{$loc} > 0) {
-			$y{$loc} = (9 * $y{$loc} +
-				    $oy{sprintf("%d %d", $x, $y + 1)}) / 10;
-			$x{$loc} = (9 * $x{$loc} +
-				    $ox{sprintf("%d %d", $x, $y + 1)}) / 10;
-			#print "to top: pulled $ox{$loc} $oy{$loc} to $x{$loc} $y{$loc}\n";
-		}
-		if ($pully{$loc} < 0) {
-			$y{$loc} = (9 * $y{$loc} +
-				    $oy{sprintf("%d %d", $x, $y - 1)}) / 10;
-			$x{$loc} = (9 * $x{$loc} +
-				    $ox{sprintf("%d %d", $x, $y - 1)}) / 10;
-			#print "to bottom: pulled $ox{$loc} $oy{$loc} to $x{$loc} $y{$loc}\n";
+			if ($pully{$loc} > 0) {
+				$y{$loc} = (9 * $y{$loc} +
+					    $oy{sprintf("%d %d", $x, $y + 1)}) / 10;
+				$x{$loc} = (9 * $x{$loc} +
+					    $ox{sprintf("%d %d", $x, $y + 1)}) / 10;
+				#print "to top: pulled $ox{$loc} $oy{$loc} to $x{$loc} $y{$loc}\n";
+			}
+			if ($pully{$loc} < 0) {
+				$y{$loc} = (9 * $y{$loc} +
+					    $oy{sprintf("%d %d", $x, $y - 1)}) / 10;
+				$x{$loc} = (9 * $x{$loc} +
+					    $ox{sprintf("%d %d", $x, $y - 1)}) / 10;
+				#print "to bottom: pulled $ox{$loc} $oy{$loc} to $x{$loc} $y{$loc}\n";
+			}
 		}
 	}
 
