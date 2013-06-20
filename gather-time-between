@@ -1,0 +1,194 @@
+#!/usr/bin/perl
+
+$minlat = 37.693601037244406;
+$minlon = -122.52914428710938;
+$maxlat = 37.848290306973134;
+$maxlon = -122.33578269994847;
+
+$size = 200;
+
+while (<>) {
+	($when, $a, $to, $b, $date, $time, $sec, $dist, $speed) = split(/ /);
+
+	next if $speed > 85;
+	next if $sec > 245 || $sec <= 0;
+	#next if $dist/$sec < 2.5;
+
+	if ($seen{$date} eq "") {
+		print STDERR "$date\n";
+		$seen{$date} = 1;
+	}
+
+	$rate = $sec / $dist;
+
+	($lat1, $lon1) = split(/,/, $a);
+	($lat2, $lon2) = split(/,/, $b);
+
+	$y1 = $size * (($lat1 - $maxlat) / ($minlat - $maxlat));
+	$x1 = $size * (($lon1 - $minlon) / ($maxlon - $minlon));
+
+	$y2 = $size * (($lat2 - $maxlat) / ($minlat - $maxlat));
+	$x2 = $size * (($lon2 - $minlon) / ($maxlon - $minlon));
+
+	$xd = $x2 - $y1;
+	$yd = $y2 - $y1;
+	$dist = sqrt($xd * $xd + $yd * $yd);
+
+	$x1 = int($x1);
+	$y1 = int($y1);
+	$x2 = int($x2);
+	$y2 = int($y2);
+
+	next if ($x1 == $x2 && $y1 == $y2);
+
+	$time{"$x1 $y1 $x2 $y2"} += $sec / $dist;
+	$count{"$x1 $y1 $x2 $y2"}++;
+
+	$time{"$x2 $y2 $x1 $y1"} += $sec / $dist;
+	$count{"$x2 $y2 $x1 $y1"}++;
+}
+
+for $loc (keys(%time)) {
+	$avg += $time{$loc} / $count{$loc};
+	$sum++;
+}
+$avg /= $sum;
+
+for $loc (keys(%time)) {
+	($x1, $y1, $x2, $y2) = split(/ /, $loc);
+
+	if (0) {
+		printf("%.8f %s ", $time{$loc} / $count{$loc} / $avg, $loc);
+		printf("%.6f,%.6f to %.6f,%.6f\n",
+			 $y1 / $size * ($maxlat - $minlat) + $minlat,
+			 $x1 / $size * ($maxlon - $minlon) + $minlon,
+			 $y2 / $size * ($maxlat - $minlat) + $minlat,
+			 $x2 / $size * ($maxlon - $minlon) + $minlon);
+	}
+
+	push @forces, sprintf("%d %d %d %d %.8f %d", $x1, $y1, $x2, $y2, $time{$loc} / $count{$loc} / $avg, $count{$loc});
+}
+
+for ($y = 0; $y <= $size; $y++) {
+	for ($x = 0; $x <= $size; $x++) {
+		push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x - 1, $y, 1, 1);
+		push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x + 1, $y, 1, 1);
+		push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x, $y - 1, 1, 1);
+		push @forces, sprintf("%d %d %d %d %d %d", $x, $y, $x, $y + 1, 1, 1);
+
+		$x{"$x $y"} = $x;
+		$y{"$x $y"} = $y;
+
+		$loc = "$x $y";
+		#print "loc >$loc<   at $x{$loc} $y{$loc}\n";
+	}
+}
+
+#while (1) 
+for ($pass = 0; $pass < 100; $pass++)
+{
+	print STDERR "pass $pass\n";
+
+	%pullx = ();
+	%pully = ();
+	%pullcount = ();
+
+	for $force (@forces) {
+		($x1, $y1, $x2, $y2, $wantdist, $count) = split(/ /, $force);
+
+		$pullx{"$x1 $y1"} += ($x{"$x2 $y2"} - $x{"$x1 $y1"}) / $wantdist; # * $count;
+		$pully{"$x1 $y1"} += ($y{"$x2 $y2"} - $y{"$x1 $y1"}) / $wantdist; # * $count;
+		$pullcount{"$x1 $y1"}++;
+	}
+
+	%ox = %x;
+	%oy = %y;
+
+	for $loc (keys(%pullx)) {
+		($x, $y) = split(/ /, $loc);
+
+		if ($x < 1 || $y < 1 || $x > $size - 1 || $y > $size - 1) {
+			next;
+		}
+
+		if (0 && $pullcount{$loc} >= 5) {
+			print "loc >$loc<   at $x{$loc} $y{$loc} ";
+			printf("pulled %.6f %.6f\n", $pullx{$loc} / $pullcount{$loc}, $pully{$loc} / $pullcount{$loc});
+		}
+
+		if (0) {
+			if (abs($pullx{$loc}) + abs($pully{$loc}) >= 1) {
+				$angle = atan2($pullx{$loc}, $pully{$loc});
+				$x{$loc} += cos($angle);
+				$y{$loc} += sin($angle);
+			} else {
+				$x{$loc} += $pullx{$loc};
+				$y{$loc} += $pully{$loc};
+			}
+		}
+
+		if ($pullx{$loc} > 0) {
+			$x{$loc} = (9 * $x{$loc} +
+				    $ox{sprintf("%d %d", $x + 1, $y)}) / 10;
+			$y{$loc} = (9 * $y{$loc} +
+				    $oy{sprintf("%d %d", $x + 1, $y)}) / 10;
+			#print "to right: pulled $ox{$loc} $oy{$loc} to $x{$loc} $y{$loc}\n";
+		}
+		if ($pullx{$loc} < 0) {
+			$x{$loc} = (9 * $x{$loc} +
+				    $ox{sprintf("%d %d", $x - 1, $y)}) / 10;
+			$y{$loc} = (9 * $y{$loc} +
+				    $oy{sprintf("%d %d", $x - 1, $y)}) / 10;
+			#print "to left: pulled $ox{$loc} $oy{$loc} to $x{$loc} $y{$loc}\n";
+		}
+
+		if ($pully{$loc} > 0) {
+			$y{$loc} = (9 * $y{$loc} +
+				    $oy{sprintf("%d %d", $x, $y + 1)}) / 10;
+			$x{$loc} = (9 * $x{$loc} +
+				    $ox{sprintf("%d %d", $x, $y + 1)}) / 10;
+			#print "to top: pulled $ox{$loc} $oy{$loc} to $x{$loc} $y{$loc}\n";
+		}
+		if ($pully{$loc} < 0) {
+			$y{$loc} = (9 * $y{$loc} +
+				    $oy{sprintf("%d %d", $x, $y - 1)}) / 10;
+			$x{$loc} = (9 * $x{$loc} +
+				    $ox{sprintf("%d %d", $x, $y - 1)}) / 10;
+			#print "to bottom: pulled $ox{$loc} $oy{$loc} to $x{$loc} $y{$loc}\n";
+		}
+	}
+
+	if (0) {
+	print "0 setlinewidth\n";
+
+	for ($y = 0; $y <= $size; $y++) {
+		for ($x = 0; $x <= $size; $x++) {
+			$loc = "$x $y";
+
+			printf("%.3f %.3f %s ", $x{$loc} * 612 / $size, 612 - ($y{$loc} * 612 / $size), $x == 0 ? "moveto" : "lineto");
+		}
+
+		print "stroke\n";
+	}
+
+	for ($x = 0; $x <= $size; $x++) {
+		for ($y = 0; $y <= $size; $y++) {
+			$loc = "$x $y";
+
+			printf("%.3f %.3f %s ", $x{$loc} * 612 / $size, 612 - ($y{$loc} * 612 / $size), $y == 0 ? "moveto" : "lineto");
+		}
+
+		print "stroke\n";
+	}
+
+	print "showpage\n";
+	}
+}
+
+for ($y = 0; $y <= $size; $y++) {
+	for ($x = 0; $x <= $size; $x++) {
+		$loc = "$x $y";
+
+		printf("%.3f %.3f\n", $x{$loc}, $y{$loc});
+	}
+}
